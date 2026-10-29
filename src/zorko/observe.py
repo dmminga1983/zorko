@@ -1,9 +1,11 @@
 """Self-observation: Zorko notes its own weak spots so it can be improved.
 
-Everything stays on this computer in ~/.zorko/observations/. Nothing is sent
-anywhere. Records hold the site host and technical facts (what failed, how big
-the map was), never page text, typed text or full URLs.
-Turn off with: zorko config --set observe=false
+Nothing is recorded until the user agrees (zorko consent). Records stay on this
+computer in ~/.zorko/observations/ and hold the site name and technical facts
+(what failed, how big the map was), never page text, typed text or full URLs.
+With the "share" choice the user can send a monthly report as a GitHub issue;
+they see the whole text and press submit themselves. Zorko has no server and
+sends nothing on its own.
 """
 
 from __future__ import annotations
@@ -18,8 +20,79 @@ from pathlib import Path
 from . import __version__
 
 
+REPO = "dmminga1983/zorko"
+CHOICES = ("off", "local", "share")
+
+CONSENT_TEXT = """\
+Zorko can learn from how it works for you, to get better over time.
+
+  off    record nothing
+  local  keep a journal of Zorko's own problems on this computer only
+  share  same, and once a month offer you a report to send to the developers
+
+The journal holds the site name and technical facts (what failed, how large the
+map was). It never holds page text, what you typed, passwords or full addresses.
+Nothing leaves your computer unless you choose share AND press submit on the
+report, which you will see in full first. Change any time: zorko consent
+
+Zorko может учиться на своей работе у вас, чтобы становиться лучше.
+
+  off    ничего не записывать
+  local  вести журнал проблем Zorko только на этом компьютере
+  share  то же, и раз в месяц предлагать отправить отчёт разработчикам
+
+В журнале только имя сайта и технические факты (что не сработало, какого
+размера была карта). Никогда текст страниц, что вы вводили, пароли или полные
+адреса. Ничего не уходит с компьютера, пока вы не выберете share И сами не
+нажмёте «отправить» в отчёте, который сначала увидите целиком.
+Изменить в любой момент: zorko consent
+"""
+
+
 def _home() -> Path:
     return Path(os.environ.get("ZORKO_HOME") or Path.home() / ".zorko")
+
+
+def _cfg_path() -> Path:
+    return _home() / "config.json"
+
+
+def _read_cfg() -> dict:
+    try:
+        return json.loads(_cfg_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _write_cfg(cfg: dict):
+    p = _cfg_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def consent() -> str | None:
+    """The user's choice: 'off', 'local', 'share', or None when not asked yet."""
+    c = _read_cfg().get("consent")
+    return c if c in CHOICES else None
+
+
+def set_consent(choice: str) -> str:
+    choice = (choice or "").strip().lower()
+    aliases = {"no": "off", "нет": "off", "0": "off", "1": "local", "yes": "local", "да": "local",
+               "local only": "local", "2": "share", "send": "share"}
+    choice = aliases.get(choice, choice)
+    if choice not in CHOICES:
+        raise ValueError(f"choose one of: {', '.join(CHOICES)}")
+    cfg = _read_cfg()
+    cfg["consent"] = choice
+    cfg["consent_date"] = _dt.date.today().isoformat()
+    _write_cfg(cfg)
+    return choice
+
+
+def recording_allowed() -> bool:
+    cfg = _read_cfg()
+    return cfg.get("consent") in ("local", "share") and cfg.get("observe", True) is not False
 
 
 def host_of(url: str) -> str:
@@ -31,8 +104,8 @@ def host_of(url: str) -> str:
 
 
 class Observer:
-    def __init__(self, enabled: bool = True):
-        self.enabled = enabled
+    def __init__(self, enabled: bool | None = None):
+        self.enabled = recording_allowed() if enabled is None else enabled
 
     def record(self, kind: str, url: str = "", **facts):
         if not self.enabled:
@@ -113,3 +186,44 @@ def report(month: str | None = None) -> str:
         lines += ["", "## Feedback notes", ""]
         lines += [f"- {r['ts'][:10]} {r['host'] or ''}: {r.get('text', '')}" for r in fb[-30:]]
     return "\n".join(lines)
+
+
+def last_month() -> str:
+    first = _dt.date.today().replace(day=1)
+    return f"{first - _dt.timedelta(days=1):%Y-%m}"
+
+
+def share_pending() -> str | None:
+    """Month whose report is waiting to be offered for sharing, if any."""
+    if consent() != "share":
+        return None
+    m = last_month()
+    if m in _read_cfg().get("shared", []) or not load(m):
+        return None
+    return m
+
+
+def share_url(month: str, include_sites: bool = True) -> tuple[str, str]:
+    """(report text, prefilled GitHub issue URL). Nothing is sent by this function."""
+    text = report(month)
+    if not include_sites:
+        import re
+
+        known = sorted({r["host"] for r in load(month) if r.get("host")}, key=len, reverse=True)
+        for i, h in enumerate(known, 1):
+            text = text.replace(h, f"site{i}")
+        text = re.sub(r"(?m)^- \d{4}-\d\d-\d\d .*$", "- (feedback note hidden)", text)
+    body = (f"Anonymous usage report for {month}, zorko {__version__}.\n"
+            "Reviewed by me before sending.\n\n" + text)
+    if len(body) > 6000:
+        body = body[:6000] + "\n\n(truncated)"
+    q = urllib.parse.urlencode({"title": f"Usage report {month}", "labels": "usage-report", "body": body})
+    return text, f"https://github.com/{REPO}/issues/new?{q}"
+
+
+def mark_shared(month: str):
+    cfg = _read_cfg()
+    done = cfg.setdefault("shared", [])
+    if month not in done:
+        done.append(month)
+    _write_cfg(cfg)

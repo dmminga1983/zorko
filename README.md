@@ -49,7 +49,7 @@ On tiny pages (a login form) the gain is small, the map has a few fixed header l
 
 ```bash
 pipx install git+https://github.com/dmminga1983/zorko
-zorko setup                      # downloads Chromium, prints the next steps
+zorko setup                      # downloads Chromium, asks about the journal, prints next steps
 claude mcp add zorko -- zorko mcp
 ```
 
@@ -72,6 +72,7 @@ After `claude mcp add`, just ask: "open avito.ru and find a well pump under 10 0
 | `screenshot(full)` | an image, when the map is not enough |
 | `note(text)` | remember something about this site; shown on the next visit |
 | `feedback(text)` | report a Zorko weak spot (map missed something, a click did nothing) |
+| `consent(choice)` | save the user's own answer about the journal |
 
 ## Sites that need a login
 
@@ -89,7 +90,9 @@ The session is kept in the profile `~/.zorko/profiles/default` and the agent use
 zorko look https://example.com        # print the page map
 zorko read https://example.com/post   # print the main text
 zorko bench https://a.com https://b.com   # token cost: HTML vs snapshot vs Zorko
+zorko consent                         # allow or forbid the self-improvement journal
 zorko report                          # what Zorko noticed about its own weak spots
+zorko share                           # review and send last month's report (optional)
 zorko feedback "prices missing on the search page" --url https://shop.example
 zorko config                          # show settings
 ```
@@ -115,16 +118,21 @@ zorko config --set user_agent="..."
 
 ## Self-improvement
 
-Zorko watches how it does in real use and keeps a journal of its own weak spots in `~/.zorko/observations/`:
+Zorko gets better from real use, but only with your permission. The first time you run it, it asks:
 
-- actions that failed and element numbers that went stale;
-- pages that did not open;
-- maps that look poorer than the page (possible missing content), controls without a readable name, maps that are too large;
-- prompt injections found (counts only);
-- safety refusals;
-- `feedback` notes from the agent or from you.
+| Choice | What happens |
+|---|---|
+| `off` | nothing is recorded |
+| `local` | Zorko keeps a journal of its own problems on your computer |
+| `share` | the same, and once a month it offers you a short report to send to the developers |
 
-The journal holds the site name and technical facts only, never page text, typed text or full addresses, and it never leaves your computer. `zorko report` turns it into a Markdown summary. Once a month a scheduled Claude task reads that report, runs `zorko bench` on [a fixed list of public sites](benchmarks/sites.txt), fixes the top problems with tests, and opens a pull request for the owner to review. Nothing is merged automatically. Turn the journal off with `zorko config --set observe=false`.
+Until you answer, nothing is recorded. Change your mind any time with `zorko consent`.
+
+The journal (`~/.zorko/observations/`) notes actions that failed, pages that did not open, maps that look poorer than the page or are too large, controls without a readable name, prompt injections found (counts only), safety refusals and `feedback` notes. It holds the site name and technical facts only: never page text, what you typed, passwords or full addresses.
+
+Sending is always done by you. `zorko share` shows the whole report, then opens it as a draft GitHub issue; nothing is sent until you press Submit. `zorko share --no-sites` replaces site names with `site1`, `site2`. Zorko has no server and sends nothing on its own.
+
+The developers read these reports, together with the maintainer's own journal and `zorko bench` on [a fixed list of public sites](benchmarks/sites.txt), once a month. Fixes arrive as reviewed pull requests with tests.
 
 ## How it works
 

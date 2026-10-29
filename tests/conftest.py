@@ -37,6 +37,7 @@ def site():
 @pytest.fixture()
 def zhome(tmp_path, monkeypatch):
     monkeypatch.setenv("ZORKO_HOME", str(tmp_path))
+    (tmp_path / "config.json").write_text('{"consent": "local"}', encoding="utf-8")
     return tmp_path
 
 

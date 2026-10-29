@@ -52,3 +52,41 @@ def test_observe_off(site, zhome):
 
 def test_empty_report(zhome):
     assert "No observations yet" in report()
+
+
+# -- consent ----------------------------------------------------------------------
+
+def test_nothing_recorded_without_consent(site, zhome):
+    (zhome / "config.json").write_text('{"allow_private": true}', encoding="utf-8")
+    from zorko import Browser
+
+    with Browser(persist=False) as b:
+        out = b.open(site + "/news.html")
+        assert "Zorko asks the user once" in out
+        assert "not saved" in b.feedback("something")
+        assert "Zorko asks" not in b.open(site + "/shop.html")  # asked once per session
+    assert load() == []
+
+
+def test_set_consent_aliases(zhome):
+    from zorko.observe import consent, set_consent
+
+    assert set_consent("нет") == "off" and consent() == "off"
+    assert set_consent("share") == "share"
+    with pytest.raises(ValueError):
+        set_consent("maybe")
+
+
+def test_share_is_reviewable_and_can_hide_sites(browser, site, zhome):
+    from zorko.observe import mark_shared, set_consent, share_pending, share_url
+
+    set_consent("share")
+    browser.open(site + "/news.html")
+    browser.feedback("comment count missing")
+    month = load()[0]["ts"][:7]
+    text, url = share_url(month)
+    assert "127.0.0.1" in text and url.startswith("https://github.com/dmminga1983/zorko/issues/new?")
+    text2, url2 = share_url(month, include_sites=False)
+    assert "127.0.0.1" not in text2 and "comment count" not in text2
+    mark_shared(month)
+    assert share_pending() is None

@@ -12,7 +12,7 @@ from importlib import resources
 from pathlib import Path
 
 from .guard import Policy, is_risky
-from .observe import Observer
+from .observe import Observer, consent, share_pending
 from .render import UNTRUSTED, build_lines, estimate_tokens, paginate, readable
 
 SNAPSHOT_JS = resources.files("zorko").joinpath("snapshot.js").read_text(encoding="utf-8")
@@ -54,7 +54,8 @@ class Browser:
         self.profile = profile
         self.headless = headless
         self.policy = policy or policy_from_config(cfg)
-        self.obs = Observer(bool(cfg.get("observe", True)))
+        self.obs = Observer()
+        self._notified = False
         self.max_chars = max_chars
         self.user_agent = user_agent or cfg.get("user_agent")
         self.persist = persist
@@ -267,6 +268,17 @@ class Browser:
             raise ZorkoError("refused: robots.txt of this site disallows automated access to this page "
                              "(set respect_robots=false in ~/.zorko/config.json to override for your own use)")
         self._log("open", target=url)
+        if not self._notified:
+            self._notified = True
+            if consent() is None:
+                self.events.append(
+                    "Zorko asks the user once: may it keep a local journal of its own problems to improve? "
+                    "Ask the user (choices: off, local, share) and pass their own answer to consent(); "
+                    "or they can run `zorko consent`. Nothing is recorded until they answer.")
+            elif share_pending():
+                self.events.append(
+                    "Zorko's anonymous usage report for last month is ready. When convenient, tell the user "
+                    "they can review and send it with `zorko share` (optional).")
         try:
             self.page.goto(url, wait_until="domcontentloaded", timeout=30000)
         except Exception as e:  # noqa: BLE001
@@ -471,6 +483,8 @@ class Browser:
 
     def feedback(self, text: str) -> str:
         """A note about Zorko itself: what the map missed, what did not work."""
+        if not self.obs.enabled:
+            return "not saved: the user has not allowed Zorko's journal (they can enable it with `zorko consent`)"
         self.obs.record("feedback", self.page.url if self.page else "", text=text.strip())
         return "thanks, noted for the next Zorko improvement"
 

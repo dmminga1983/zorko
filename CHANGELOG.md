@@ -10,5 +10,5 @@ First release.
 - Prompt-injection guard (hidden text excluded and reported, Russian and English patterns).
 - `!confirm` on pay, send, delete and publish; no passwords or card numbers; `zorko login` for sign-in.
 - Private network blocked, robots.txt respected, action log, per-site notes.
-- Self-observation journal, `zorko report`, `feedback` tool.
+- Self-improvement with explicit consent: `zorko consent` (off, local, share); nothing recorded until the user answers. Local journal, `zorko report`, `feedback` tool, and `zorko share` that shows the whole report and opens it as a GitHub issue draft for the user to submit.
 - MCP server for Claude Code without extra dependencies; `look`, `read`, `bench`, `config` commands.

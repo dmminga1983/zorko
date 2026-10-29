@@ -73,6 +73,10 @@ def cmd_setup(a):
     if r != 0:
         print("Chromium install failed; run: python -m playwright install chromium", file=sys.stderr)
         return r
+    from .observe import consent
+
+    if consent() is None and not sys.stdin.isatty():
+        print("\nLater, choose whether Zorko may keep a journal of its problems: zorko consent")
     print("\nDone. Connect Zorko to Claude Code with:\n  claude mcp add zorko -- zorko mcp")
     print("Sign in to a site once (the session is kept):\n  zorko login https://example.com")
     return 0
@@ -94,8 +98,63 @@ def cmd_report(a):
 def cmd_feedback(a):
     from .observe import Observer
 
-    Observer().record("feedback", a.url or "", text=" ".join(a.text))
+    obs = Observer()
+    if not obs.enabled:
+        print("The journal is off, so nothing was saved. To allow it: zorko consent local")
+        return 1
+    obs.record("feedback", a.url or "", text=" ".join(a.text))
     print("noted, thanks")
+
+
+def ask_consent() -> str:
+    from .observe import CONSENT_TEXT, set_consent
+
+    print(CONSENT_TEXT)
+    while True:
+        ans = input("Your choice / ваш выбор [off/local/share]: ").strip().lower()
+        try:
+            c = set_consent(ans)
+        except ValueError as e:
+            print(e)
+            continue
+        print(f"saved: {c}")
+        return c
+
+
+def cmd_consent(a):
+    from .observe import CONSENT_TEXT, consent, set_consent
+
+    if a.choice:
+        print(f"saved: {set_consent(a.choice)}")
+    elif sys.stdin.isatty():
+        print(f"current: {consent() or 'not chosen yet'}\n")
+        ask_consent()
+    else:
+        print(CONSENT_TEXT)
+        print(f"current: {consent() or 'not chosen yet'}; set with: zorko consent off|local|share")
+
+
+def cmd_share(a):
+    import webbrowser
+
+    from .observe import consent, last_month, load, mark_shared, share_url
+
+    if consent() != "share":
+        print("Sharing is off. To allow it: zorko consent share")
+        return 1
+    month = a.month or last_month()
+    if not load(month):
+        print(f"No observations for {month}.")
+        return 0
+    text, url = share_url(month, include_sites=not a.no_sites)
+    print(text)
+    print("\nThis is everything that would be sent. It opens as a draft GitHub issue; nothing is sent until you press Submit there.")
+    if a.yes or (sys.stdin.isatty() and input("Open the draft in your browser? [y/N]: ").strip().lower() in ("y", "yes", "д", "да")):
+        webbrowser.open(url)
+        mark_shared(month)
+        print("Opened. Thank you!")
+    else:
+        print("Not opened. Run again any time: zorko share")
 
 
 def cmd_config(a):
@@ -164,6 +223,16 @@ def main(argv=None):
     s.add_argument("--url", help="site it was about")
     s.set_defaults(fn=cmd_feedback)
 
+    s = sub.add_parser("consent", help="choose whether Zorko keeps a journal of its problems (off/local/share)")
+    s.add_argument("choice", nargs="?", choices=["off", "local", "share"])
+    s.set_defaults(fn=cmd_consent)
+
+    s = sub.add_parser("share", help="review last month's anonymous report and open it as a GitHub issue draft")
+    s.add_argument("--month", help="YYYY-MM, default last month")
+    s.add_argument("--no-sites", action="store_true", help="replace site names with site1, site2...")
+    s.add_argument("--yes", action="store_true", help="open the draft without asking")
+    s.set_defaults(fn=cmd_share)
+
     s = sub.add_parser("config", help="show or change ~/.zorko/config.json")
     s.add_argument("--allow", action="append", metavar="DOMAIN", help="only allow these domains")
     s.add_argument("--deny", action="append", metavar="DOMAIN", help="never open these domains")
@@ -171,6 +240,11 @@ def main(argv=None):
     s.set_defaults(fn=cmd_config)
 
     a = ap.parse_args(argv)
+    if a.cmd in ("look", "read", "bench", "login", "setup") and sys.stdin.isatty():
+        from .observe import consent
+
+        if consent() is None:
+            ask_consent()
     try:
         return a.fn(a) or 0
     except ZorkoError as e:
