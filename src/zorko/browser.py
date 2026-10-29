@@ -43,6 +43,27 @@ def policy_from_config(cfg: dict) -> Policy:
     )
 
 
+_BLOCK_PATTERNS = [
+    ("bot check", r"проверка безопасности|доступ ограничен|подтвердите,? что вы (не робот|человек)|вы робот|"
+                  r"captcha|recaptcha|hcaptcha|verify you are (a )?human|are you a robot|just a moment|"
+                  r"checking your browser|attention required|access denied|unusual traffic|"
+                  r"нет соединения.{0,80}vpn|выключите vpn|отключить vpn"),
+    ("rate limit", r"too many requests|not able to serve your requests this quickly|rate limit|"
+                   r"слишком много запросов|429"),
+]
+
+
+def blocked_reason(title: str, lines: list[str]) -> str | None:
+    """Detect a bot-check or rate-limit page by its title and first lines."""
+    head = (title + " " + " ".join(lines[:25])).lower()
+    if len(" ".join(lines)) > 6000:
+        return None  # a real page that merely mentions these words
+    for name, rx in _BLOCK_PATTERNS:
+        if re.search(rx, head):
+            return name
+    return None
+
+
 class ZorkoError(Exception):
     """An error message meant for the agent."""
 
@@ -56,6 +77,7 @@ class Browser:
         self.policy = policy or policy_from_config(cfg)
         self.obs = Observer()
         self._notified = False
+        self._blocked = None
         self.max_chars = max_chars
         self.user_agent = user_agent or cfg.get("user_agent")
         self.persist = persist
@@ -166,7 +188,7 @@ class Browser:
         self.page.wait_for_timeout(150)
 
     # -- snapshot ------------------------------------------------------------
-    def _snapshot(self) -> list[tuple[str, dict]]:
+    def _snapshot(self, max_text: int = 600) -> list[tuple[str, dict]]:
         page = self.page
         frames = []
         fresh = page.main_frame.evaluate("() => { const f = !window.__zorkoSeen; window.__zorkoSeen = 1; return f; }")
@@ -187,7 +209,7 @@ class Browser:
                     continue
                 label = urllib.parse.urlsplit(fr.url).netloc or fr.name or "inline"
             try:
-                snap = fr.evaluate(SNAPSHOT_JS, {"startId": self.next_id, "maxText": 400})
+                snap = fr.evaluate(SNAPSHOT_JS, {"startId": self.next_id, "maxText": max_text})
             except Exception:
                 continue
             for it in snap["items"]:
@@ -215,6 +237,12 @@ class Browser:
     def _compose(self, page_no: int = 1) -> str:
         frames = self._snapshot()
         lines, warnings, elements = build_lines(frames)
+        why = blocked_reason(frames[0][1]["title"] if frames else "", lines)
+        if why:
+            warnings.insert(0, f"this page is a {why}, not the real content. Zorko does not bypass bot protection. "
+                               "Tell the user; they can open the site themselves, or sign in once with "
+                               "`zorko login <site>` and retry (some sites let signed-in visitors through).")
+            self._blocked = why
         self.elements = elements
         self.last_lines = lines
         body, total = paginate(lines, page_no, self.max_chars)
@@ -287,8 +315,12 @@ class Browser:
             raise self._fail("open_failed", f"could not open {url}: {msg} {ev}".strip(),
                              error=msg.split(":")[0][:80]) from None
         self._settle()
+        self._blocked = None
         out = self._compose(1)
-        self._observe_open(out)
+        if self._blocked:
+            self.obs.record("blocked", self.page.url, why=self._blocked)
+        else:
+            self._observe_open(out)
         return out
 
     def look(self, part: int = 1) -> str:
@@ -297,7 +329,7 @@ class Browser:
 
     def read(self, part: int = 1) -> str:
         self._need_page()
-        frames = self._snapshot()
+        frames = self._snapshot(max_text=20000)
         lines = readable(frames)
         body, total = paginate(lines, part, self.max_chars)
         out = [f"title: {frames[0][1]['title'] if frames else ''}", f"url: {self.page.url}"]
@@ -314,6 +346,13 @@ class Browser:
         self._compose(1)
         q = text.lower().strip()
         hits = [ln for ln in self.last_lines if q in ln.lower()]
+        # Links folded out of long menus are still searchable.
+        from .render import element_line
+
+        shown = " ".join(self.last_lines)
+        for e in self.elements.values():
+            if q in e.get("name", "").lower() and f"[{e['id']}]" not in shown and f"(#{e['id']})" not in shown:
+                hits.append(element_line(e, self.page.url))
         if not hits:
             return f"nothing matching {text!r} on this page."
         body, total = paginate(hits, 1, self.max_chars)
