@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zorko"
+version = "0.1.0"
+description = "A browser for AI agents: compact page maps that save tokens, prompt-injection guard and safe actions. MCP server for Claude Code."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "dmminga1983" }]
+keywords = ["browser", "ai-agents", "mcp", "playwright", "claude", "automation", "prompt-injection"]
+dependencies = ["playwright>=1.45"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: Internet :: WWW/HTTP :: Browsers",
+]
+
+[project.urls]
+Homepage = "https://github.com/dmminga1983/zorko"
+Issues = "https://github.com/dmminga1983/zorko/issues"
+
+[project.scripts]
+zorko = "zorko.cli:main"
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+zorko = ["snapshot.js"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

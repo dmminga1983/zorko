@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset=utf-8><title>Насосы: каталог</title></head><body>
+<header><nav><a href="/">Магазин</a> <a href="/catalog">Каталог</a> <a href="/cart">Корзина <span id=cnt>0</span></a> <a href="/orders">Мои заказы</a></nav></header>
+<main><h1>Скважинные насосы</h1>
+<label for=sort>Сортировка</label><select id=sort><option>По популярности</option><option>Сначала дешёвые</option><option>Сначала дорогие</option></select>
+<label><input type=checkbox id=stock> Только в наличии</label>
+<div class=grid><div class="card" style="border:1px solid #ccc"><a href="/p/1"><img src="/p1.jpg" alt="Насос модель 1"></a>
+<a href="/p/1"><h3>Скважинный насос ЭТЕРНА 1</h3></a><div class="price">2000 ₽</div><span class="rating">★ 4.1</span>
+<button class="buy" data-sku="1">В корзину</button></div><div class="card" style="border:1px solid #ccc"><a href="/p/2"><img src="/p2.jpg" alt="Насос модель 2"></a>
+<a href="/p/2"><h3>Скважинный насос ЭТЕРНА 2</h3></a><div class="price">5562 ₽</div><span class="rating">★ 4.2</span>
+<button class="buy" data-sku="2">В корзину</button></div><div class="card" style="border:1px solid #ccc"><a href="/p/3"><img src="/p3.jpg" alt="Насос модель 3"></a>
+<a href="/p/3"><h3>Скважинный насос ЭТЕРНА 3</h3></a><div class="price">7842 ₽</div><span class="rating">★ 4.3</span>
+<button class="buy" data-sku="3">В корзину</button></div><div class="card" style="border:1px solid #ccc"><a href="/p/4"><img src="/p4.jpg" alt="Насос модель 4"></a>
+<a href="/p/4"><h3>Скважинный насос ЭТЕРНА 4</h3></a><div class="price">7472 ₽</div><span class="rating">★ 4.4</span>
+<button class="buy" data-sku="4">В корзину</button></div><div class="card" style="border:1px solid #ccc"><a href="/p/5"><img src="/p5.jpg" alt="Насос модель 5"></a>
+<a href="/p/5"><h3>Скважинный насос ЭТЕРНА 5</h3></a><div class="price">7156 ₽</div><span class="rating">★ 4.5</span>
+<button class="buy" data-sku="5">В корзину</button></div><div class="card" style="border:1px solid #ccc"><a href="/p/6"><img src="/p6.jpg" alt="Насос модель 6"></a>
+<a href="/p/6"><h3>Скважинный насос ЭТЕРНА 6</h3></a><div class="price">1416 ₽</div><span class="rating">★ 4.6</span>
+<button class="buy" data-sku="6">В корзину</button></div><div class="card" style="border:1px solid #ccc"><a href="/p/7"><img src="/p7.jpg" alt="Насос модель 7"></a>
+<a href="/p/7"><h3>Скважинный насос ЭТЕРНА 7</h3></a><div class="price">2989 ₽</div><span class="rating">★ 4.7</span>
+<button class="buy" data-sku="7">В корзину</button></div><div class="card" style="border:1px solid #ccc"><a href="/p/8"><img src="/p8.jpg" alt="Насос модель 8"></a>
+<a href="/p/8"><h3>Скважинный насос ЭТЕРНА 8</h3></a><div class="price">1865 ₽</div><span class="rating">★ 4.8</span>
+<button class="buy" data-sku="8">В корзину</button></div><div class="card" style="border:1px solid #ccc"><a href="/p/9"><img src="/p9.jpg" alt="Насос модель 9"></a>
+<a href="/p/9"><h3>Скважинный насос ЭТЕРНА 9</h3></a><div class="price">4958 ₽</div><span class="rating">★ 4.9</span>
+<button class="buy" data-sku="9">В корзину</button></div><div class="card" style="border:1px solid #ccc"><a href="/p/10"><img src="/p10.jpg" alt="Насос модель 10"></a>
+<a href="/p/10"><h3>Скважинный насос ЭТЕРНА 10</h3></a><div class="price">7133 ₽</div><span class="rating">★ 4.0</span>
+<button class="buy" data-sku="10">В корзину</button></div><div class="card" style="border:1px solid #ccc"><a href="/p/11"><img src="/p11.jpg" alt="Насос модель 11"></a>
+<a href="/p/11"><h3>Скважинный насос ЭТЕРНА 11</h3></a><div class="price">4582 ₽</div><span class="rating">★ 4.1</span>
+<button class="buy" data-sku="11">В корзину</button></div><div class="card" style="border:1px solid #ccc"><a href="/p/12"><img src="/p12.jpg" alt="Насос модель 12"></a>
+<a href="/p/12"><h3>Скважинный насос ЭТЕРНА 12</h3></a><div class="price">4768 ₽</div><span class="rating">★ 4.2</span>
+<button class="buy" data-sku="12">В корзину</button></div></div>
+<button id=checkout>Оформить заказ и оплатить</button>
+<p id=status></p></main>
+<script>
+let n=0;document.querySelectorAll('.buy').forEach(b=>b.onclick=()=>{n++;document.getElementById('cnt').textContent=n;document.getElementById('status').textContent='Товар добавлен в корзину, всего '+n;});
+document.getElementById('checkout').onclick=()=>{document.getElementById('status').textContent='ЗАКАЗ ОПЛАЧЕН';};
+document.getElementById('sort').onchange=e=>{document.getElementById('status').textContent='Сортировка: '+e.target.value;};
+</script></body></html>

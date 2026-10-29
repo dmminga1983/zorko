@@ -1,0 +1,10 @@
+# Public pages for the monthly `zorko bench` run. One URL per line.
+# Keep the list stable so results are comparable month to month.
+https://ru.wikipedia.org/wiki/Екатеринбург
+https://en.wikipedia.org/wiki/Web_browser
+https://news.ycombinator.com/
+https://habr.com/ru/articles/
+https://github.com/microsoft/playwright
+https://docs.python.org/3/library/json.html
+https://www.gismeteo.ru/
+https://lenta.ru/

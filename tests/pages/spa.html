@@ -1,0 +1,17 @@
+<!doctype html><html><head><meta charset=utf-8><title>Приложение</title>
+<style>.btn{cursor:pointer;padding:4px;display:inline-block;border:1px solid #888}</style></head><body><div id=root>Загрузка…</div>
+<script>
+class XCard extends HTMLElement{connectedCallback(){const s=this.attachShadow({mode:'open'});s.innerHTML='<h3>Карточка в shadow DOM</h3><button>Подробнее</button>';}}
+customElements.define('x-card',XCard);
+setTimeout(()=>{
+ const r=document.getElementById('root');
+ r.innerHTML=`<h1>Заявки по гарантии</h1>
+ <div role=tablist><div role=tab aria-selected=true tabindex=0>Открытые</div><div role=tab tabindex=0 id=closedTab>Закрытые</div></div>
+ <div id=list><div>Заявка 101: протечка кровли</div><div>Заявка 102: трещина в стяжке</div></div>
+ <div class=btn id=more>Показать ещё</div>
+ <div contenteditable=true aria-label="Заметка" id=note style="min-height:20px;border:1px solid"></div>
+ <x-card></x-card>`;
+ let k=103;document.getElementById('more').onclick=()=>{const d=document.createElement('div');d.textContent='Заявка '+(k++)+': новая';document.getElementById('list').appendChild(d);};
+ document.getElementById('closedTab').onclick=()=>{history.pushState({},'','#closed');document.getElementById('list').innerHTML='<div>Заявка 90: закрыта</div>';};
+},300);
+</script></body></html>
