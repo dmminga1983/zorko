@@ -186,3 +186,42 @@ def test_dialog_dismissed(browser, site):
     browser.page.evaluate("setTimeout(() => confirm('Удалить всё?'), 0)")
     res = browser.wait(seconds=0.5)
     assert "dismissed" in res and "Удалить всё?" in res
+
+
+# -- found on real sites (2026-10-29 test run) -----------------------------------
+
+def test_inline_links_stay_in_sentence(browser, site):
+    out = browser.open(site + "/wiki.html")
+    assert "склоне [Среднего Урала](#" in out and "](#" in out
+    assert 'link "Среднего Урала"' not in out  # not split into its own line
+    res = browser.click(int(re.search(r"\[Исеть\]\(#(\d+)\)", out).group(1)))
+    assert "navigated" in res
+
+
+def test_read_keeps_link_words(browser, site):
+    browser.open(site + "/wiki.html")
+    out = browser.read()
+    assert "на восточном склоне Среднего Урала, на реке Исеть, и является" in out
+    assert "](#" not in out
+
+
+def test_long_menu_folded_but_searchable(browser, site):
+    out = browser.open(site + "/wiki.html")
+    assert "(+48 more links, find(text) to search them)" in out
+    assert "Город 55" not in out
+    assert "Город 55" in browser.find("Город 55")
+
+
+def test_link_heading_one_line_and_no_repeated_alt(browser, site):
+    out = browser.open(site + "/blog.html")
+    assert "## [Как выбрать скважинный насос](#" in out
+    assert 'link "Как выбрать скважинный насос"' not in out
+    assert '[img "Как выбрать скважинный насос"]' not in out
+
+
+def test_bot_check_reported_and_observed(browser, site, zhome):
+    from zorko.observe import load
+
+    out = browser.open(site + "/botcheck.html")
+    assert "bot check" in out and "does not bypass" in out
+    assert any(r["kind"] == "blocked" for r in load())

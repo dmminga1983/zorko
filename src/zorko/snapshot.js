@@ -21,7 +21,7 @@
 
   function flush() {
     if (!buf.length) return;
-    const text = clean(buf.join(" "));
+    const text = clean(buf.join(" ")).replace(/\s+([,.;:!?»)\]])/g, "$1").replace(/([(«])\s+/g, "$1");
     buf = [];
     if (text) items.push({ k: "t", text: cut(text, MAX_TEXT) });
   }
@@ -150,6 +150,33 @@
     return it;
   }
 
+  // Links inside running text are kept in the sentence as [text](#id)
+  // instead of breaking the paragraph into separate lines.
+  const blockText = new Map();
+  function blockAncestor(el) {
+    let p = el.parentElement;
+    while (p && p !== document.body) {
+      const ps = styleOf(p);
+      if (ps && !/^inline/.test(ps.display) && ps.display !== "contents") return p;
+      p = p.parentElement;
+    }
+    return p;
+  }
+  function inProse(el, st, name) {
+    if (!st || !/^inline/.test(st.display) || !name) return false;
+    if (el.querySelector("img,svg,button,input")) return false;
+    const b = blockAncestor(el);
+    if (!b || /^(NAV|UL|OL|MENU|TH)$/.test(b.tagName) || b.closest("nav,[role=navigation],[role=menu],[role=tablist]")) return false;
+    let n = blockText.get(b);
+    if (n === undefined) {
+      const t = clean(b.innerText || "");
+      const linkChars = Array.from(b.querySelectorAll("a")).reduce((s, a) => s + clean(a.innerText || "").length, 0);
+      n = t.length - linkChars;  // plain (non-link) text around the links
+      blockText.set(b, n);
+    }
+    return n > 25;
+  }
+
   function regionOf(el) {
     const r = (el.getAttribute("role") || "").toLowerCase();
     if (ROLE_REGIONS[r]) return ROLE_REGIONS[r];
@@ -184,6 +211,16 @@
     if (el.tagName === "svg" || el.tagName === "SVG") return;
 
     const role = roleOf(el, st);
+    if (role === "link" && !el.querySelector("a[href],button,input,select,textarea")) {
+      const name = clean(el.innerText || el.textContent);
+      if (inProse(el, st, name)) {
+        const it = describe(el, role);
+        it.inline = true;
+        items.push(it);
+        buf.push(" [" + cut(name, 80).replace(/[\[\]]/g, "") + "](#" + it.id + ") ");
+        return;
+      }
+    }
     if (role) {
       flush();
       items.push(describe(el, role));
@@ -198,9 +235,18 @@
     if (h || (el.getAttribute("role") === "heading")) {
       flush();
       const text = clean(el.innerText || el.textContent);
-      if (text) items.push({ k: "h", level: h ? Number(h[1]) : Number(el.getAttribute("aria-level") || 2), text: cut(text, 200) });
-      // Headings rarely contain controls; if they do, still list them.
+      const level = h ? Number(h[1]) : Number(el.getAttribute("aria-level") || 2);
       const inner = el.querySelectorAll("a[href],button");
+      // A heading that is one link (news and blog lists): one line, not two.
+      if (text && inner.length === 1 && inner[0].tagName === "A" && clean(inner[0].innerText) === text) {
+        const it = describe(inner[0], "link");
+        it.inline = true;
+        items.push(it);
+        items.push({ k: "h", level, text: "[" + cut(text, 200).replace(/[\[\]]/g, "") + "](#" + it.id + ")" });
+        return;
+      }
+      if (text) items.push({ k: "h", level, text: cut(text, 200) });
+      // Headings rarely contain controls; if they do, still list them.
       if (!inner.length) return;
     }
 
