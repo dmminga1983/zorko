@@ -151,6 +151,7 @@ KINDS = {
     "injection": "prompt injection found on a page",
     "refused": "safety refusal (confirm, password, card)",
     "feedback": "note from the agent or user about Zorko",
+    "blocked": "site showed a bot check or rate limit instead of content",
 }
 
 
@@ -171,7 +172,7 @@ def report(month: str | None = None) -> str:
     lines += ["## Problems by type", "", "| type | count | meaning |", "|---|---|---|"]
     for k, n in by_kind.most_common():
         lines.append(f"| {k} | {n} | {KINDS.get(k, '')} |")
-    for kind in ("action_failed", "element_gone", "open_failed", "weak_map", "unnamed", "big_map"):
+    for kind in ("action_failed", "element_gone", "open_failed", "blocked", "weak_map", "unnamed", "big_map"):
         rs = [r for r in recs if r["kind"] == kind]
         if not rs:
             continue

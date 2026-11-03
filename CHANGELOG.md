@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.1 (2026-10-29)
+
+From the first test run on real sites (Wikipedia, Habr, GitHub, Python docs, Gismeteo, Avito, Ozon):
+
+- Links inside sentences stay in the text as `[text](#id)` instead of breaking paragraphs into separate lines. On Wikipedia this was most of the map.
+- `read()` keeps the words of links, so sentences are whole, and long paragraphs are no longer cut.
+- Long menus (for example navigation tables with 60+ links) show 12 links and a note; `find()` still searches all of them.
+- A heading that is a link (news and blog lists) is one line, and an image whose caption repeats the heading is dropped.
+- Bot-check and rate-limit pages are recognized and reported as such instead of being shown as content. Zorko still does not bypass them.
+
 ## 0.1.0 (2026-10-29)
 
 First release.
