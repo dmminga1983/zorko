@@ -126,7 +126,7 @@ Zorko gets better from real use, but only with your permission. The first time y
 | `local` | Zorko keeps a journal of its own problems on your computer |
 | `share` | the same, and once a month it offers you a short report to send to the developers |
 
-Until you answer, nothing is recorded. Change your mind any time with `zorko consent`.
+Until you answer, nothing is recorded; an empty answer (for example input redirected from a file) changes nothing. Change your mind any time with `zorko consent`.
 
 The journal (`~/.zorko/observations/`) notes actions that failed, pages that did not open, maps that look poorer than the page or are too large, controls without a readable name, prompt injections found (counts only), safety refusals and `feedback` notes. It holds the site name and technical facts only: never page text, what you typed, passwords or full addresses.
 
@@ -136,7 +136,7 @@ The developers read these reports, together with the maintainer's own journal an
 
 ## How it works
 
-A small script runs in every frame (including shadow DOM and cross-origin iframes through Playwright), walks the visible DOM, tags controls with stable `data-zorko-id` numbers and collects text blocks. Python turns that into the map: folds runs of short links, merges an image link with the title link to the same page, drops labels already shown on their control, shortens URLs and splits long pages into parts. Elements a person cannot see are excluded.
+A small script runs in every frame (including shadow DOM and cross-origin iframes through Playwright), walks the visible DOM, tags controls with stable `data-zorko-id` numbers and collects text blocks. Python turns that into the map: folds runs of short links, merges an image link with the title link to the same page, drops labels already shown on their control, glues short text fragments (weather widgets, tables made of divs) into one line, shortens URLs and splits long pages into parts. A picture link with no text or alt is named from its address (`image Old town square`), and an icon is named by its svg `<title>`. Elements a person cannot see are excluded.
 
 Not a goal: hiding automation or bypassing bot protection. Zorko presents itself as a normal Chromium.
 

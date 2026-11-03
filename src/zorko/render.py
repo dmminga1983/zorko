@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import urllib.parse
 
 from .guard import injection_hits, is_risky
@@ -89,6 +90,7 @@ def build_lines(frames: list[tuple[str, dict]]) -> tuple[list[str], list[str], d
         prev_text = None
         prev_link: dict | None = None  # last link shown, to fold image+title pairs
         run: list[dict] = []  # consecutive short links, merged into one line
+        frag_at = -1  # index of a line made of short text fragments that may grow
         items = snap["items"]
 
         def flush_run():
@@ -149,11 +151,22 @@ def build_lines(frames: list[tuple[str, dict]]) -> tuple[list[str], list[str], d
                 if text == prev_text:
                     continue
                 prev_text = text
+                if frag_at == len(lines) - 1 and len(text) <= FRAGMENT and len(lines[-1]) + len(text) < FRAGMENT_LINE:
+                    # Weather widgets, tables made of divs: "+9", "Ветер", "5", "м/с" are one line, not four.
+                    glued = lines[-1] + ("" if text[0] in ",.;:!?%)»" else " ") + text
+                    hits = injection_hits(glued)
+                    if hits and not glued.startswith("[!injection?] "):
+                        warnings.append(f"visible text looks like instructions to an AI: {quote(hits[0])}")
+                        glued = "[!injection?] " + glued
+                    lines[-1] = glued
+                    continue
                 hits = injection_hits(text)
                 if hits:
                     warnings.append(f"visible text looks like instructions to an AI: {quote(hits[0])}")
                     text = "[!injection?] " + text
                 lines.append(text)
+                if len(text) <= FRAGMENT:
+                    frag_at = len(lines) - 1
             elif k == "i":
                 lines.append(f"[img {quote(it['alt'])}]")
             elif k == "r" and it.get("open") in MARKED_REGIONS:
@@ -176,6 +189,16 @@ def build_lines(frames: list[tuple[str, dict]]) -> tuple[list[str], list[str], d
                 continue
         cleaned.append(line)
     return cleaned, warnings, elements
+
+
+FRAGMENT = 24  # text this short next to more short text is glued into one line
+FRAGMENT_LINE = 160
+MARKUP = re.compile(r"\[\d+\]|\(#\d+\)| -> \S+")
+
+
+def text_chars(lines: list[str]) -> int:
+    """How much page text the map carries: plain lines and element names, without ids and addresses."""
+    return sum(len(MARKUP.sub("", ln)) for ln in lines)
 
 
 def paginate(lines: list[str], page: int, max_chars: int) -> tuple[list[str], int]:

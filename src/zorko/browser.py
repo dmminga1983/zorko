@@ -13,7 +13,7 @@ from pathlib import Path
 
 from .guard import Policy, is_risky
 from .observe import Observer, consent, share_pending
-from .render import UNTRUSTED, build_lines, estimate_tokens, paginate, readable
+from .render import UNTRUSTED, build_lines, estimate_tokens, paginate, readable, text_chars
 
 SNAPSHOT_JS = resources.files("zorko").joinpath("snapshot.js").read_text(encoding="utf-8")
 MAX_CHARS = 6000
@@ -504,7 +504,9 @@ class Browser:
             page_chars = self.page.evaluate("() => (document.body && document.body.innerText || '').length")
         except Exception:
             page_chars = 0
-        map_chars = sum(len(ln) for ln in self.last_lines if not ln.startswith("["))
+        # Text in link and button names counts too: on card-style pages
+        # (weather, shops) most of the content is inside links.
+        map_chars = text_chars(self.last_lines)
         if page_chars > 3000 and map_chars < page_chars * 0.25:
             self.obs.record("weak_map", url, page_chars=page_chars, map_chars=map_chars)
         inj = [w for w in text.splitlines() if "instructions to an AI" in w]

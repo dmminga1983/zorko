@@ -106,12 +106,35 @@ def cmd_feedback(a):
     print("noted, thanks")
 
 
-def ask_consent() -> str:
+def ask(prompt: str) -> str | None:
+    """Read one answer; None when there is nobody to answer (end of input).
+
+    The prompt is printed by us, not by input(): on the Windows console
+    input() writes it in the wrong code page and Russian text turns into
+    garbage. Redirected input (`< nul` counts as a terminal on Windows)
+    must not crash with a traceback.
+    """
+    print(prompt, end="", flush=True)
+    try:
+        line = sys.stdin.readline()
+    except (EOFError, KeyboardInterrupt, OSError):
+        line = ""
+    if not line:
+        print()
+        return None
+    return line.strip()
+
+
+def ask_consent() -> str | None:
     from .observe import CONSENT_TEXT, set_consent
 
     print(CONSENT_TEXT)
     while True:
-        ans = input("Your choice / ваш выбор [off/local/share]: ").strip().lower()
+        ans = ask("Your choice / ваш выбор [off/local/share]: ")
+        if ans is None:
+            print("No answer, nothing changed. Choose any time: zorko consent")
+            return None
+        ans = ans.lower()
         try:
             c = set_consent(ans)
         except ValueError as e:
@@ -149,7 +172,7 @@ def cmd_share(a):
     text, url = share_url(month, include_sites=not a.no_sites)
     print(text)
     print("\nThis is everything that would be sent. It opens as a draft GitHub issue; nothing is sent until you press Submit there.")
-    if a.yes or (sys.stdin.isatty() and input("Open the draft in your browser? [y/N]: ").strip().lower() in ("y", "yes", "д", "да")):
+    if a.yes or (sys.stdin.isatty() and (ask("Open the draft in your browser? [y/N]: ") or "").lower() in ("y", "yes", "д", "да")):
         webbrowser.open(url)
         mark_shared(month)
         print("Opened. Thank you!")

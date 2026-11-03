@@ -77,6 +77,45 @@ def test_set_consent_aliases(zhome):
         set_consent("maybe")
 
 
+class _NoAnswer:
+    """stdin that claims to be a terminal but has nothing in it (`< nul` on Windows)."""
+
+    def isatty(self):
+        return True
+
+    def readline(self):
+        return ""
+
+    def reconfigure(self, **kw):
+        pass
+
+
+def test_consent_prompt_without_answer_does_not_crash(zhome, monkeypatch, capsys):
+    from zorko.cli import main
+    from zorko.observe import consent
+
+    (zhome / "config.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr("sys.stdin", _NoAnswer())
+    assert main(["consent"]) == 0
+    out = capsys.readouterr().out
+    assert "Your choice / ваш выбор" in out and "nothing changed" in out
+    assert consent() is None  # no answer is not a choice
+
+
+def test_consent_prompt_reads_answer(zhome, monkeypatch, capsys):
+    import io
+
+    from zorko.cli import main
+    from zorko.observe import consent
+
+    (zhome / "config.json").write_text("{}", encoding="utf-8")
+    fake = io.StringIO("local\n")
+    fake.isatty = lambda: True
+    monkeypatch.setattr("sys.stdin", fake)
+    assert main(["consent"]) == 0
+    assert consent() == "local" and "saved: local" in capsys.readouterr().out
+
+
 def test_share_is_reviewable_and_can_hide_sites(browser, site, zhome):
     from zorko.observe import mark_shared, set_consent, share_pending, share_url
 

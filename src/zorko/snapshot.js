@@ -65,6 +65,39 @@
     return "";
   }
 
+  // Name of an icon or picture control from what is inside it. An empty alt
+  // (decorative image) does not stop the search: a logo often has an empty
+  // icon first and the named wordmark after it; svg icons carry <title>.
+  function innerLabel(el) {
+    for (const n of el.querySelectorAll("img, svg, [aria-label], [title]")) {
+      let v = n.getAttribute("alt") || n.getAttribute("aria-label") || n.getAttribute("title");
+      if (!clean(v) && /^svg$/i.test(n.tagName)) {
+        const t = n.querySelector("title");
+        v = t ? t.textContent : "";
+      }
+      if (clean(v)) return clean(v);
+    }
+    return "";
+  }
+
+  // A picture link with no text and no alt (Wikipedia file links, logos):
+  // the last part of its address is the best name there is, e.g.
+  // /wiki/File:Old_town_square.jpg -> "image Old town square".
+  function nameFromHref(href) {
+    if (!href || /^(javascript:|#)/i.test(href)) return "";
+    let seg = "";
+    try {
+      const u = new URL(href, location.href);
+      seg = decodeURIComponent(u.pathname.split("/").filter(Boolean).pop() || "");
+    } catch (e) { return ""; }
+    seg = seg.replace(/^[^:\/]{1,20}:/, "")
+      .replace(/\.(png|jpe?g|gif|svg|webp|avif|bmp|tiff?|webm|ogv|mp4)$/i, "")
+      .replace(/[_+]+/g, " ").trim();
+    // Ids and hashes are not names.
+    if (!/\p{L}{3}/u.test(seg) || /^[0-9a-f-]{12,}$/i.test(seg)) return "";
+    return "image " + cut(seg, 80);
+  }
+
   function roleOf(el, st) {
     const r = (el.getAttribute("role") || "").toLowerCase();
     if (ROLES.has(r)) return r;
@@ -125,11 +158,9 @@
         if (tag === "INPUT") name = clean(el.value || el.getAttribute("alt") || el.type);
         else {
           name = clean(el.innerText || el.textContent);
-          if (!name) {
-            const img = el.querySelector("img[alt], svg[aria-label], [title]");
-            if (img) name = clean(img.getAttribute("alt") || img.getAttribute("aria-label") || img.getAttribute("title"));
-          }
+          if (!name) name = innerLabel(el);
           if (!name) name = clean(el.getAttribute("title") || "");
+          if (!name && role === "link" && el.querySelector("img,svg")) name = nameFromHref(el.getAttribute("href"));
         }
       }
       if (role === "link") it.href = el.getAttribute("href") || "";
