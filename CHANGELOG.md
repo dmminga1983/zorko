@@ -2,11 +2,21 @@
 
 ## 0.1.2 (2026-11-03)
 
-Monthly self-improvement for October 2026. Data: the owner's local journal (25 pages, 10 sites, consent `local`), `zorko bench` on `benchmarks/sites.txt`, and a check of the commands on Windows. No user reports came in this month. Comes after 0.1.1 (PR #1).
+Monthly self-improvement for October 2026. Data: the owner's local journal (25 pages, 10 sites, consent `local`), `zorko bench` on `benchmarks/sites.txt`, and a check of the commands on Windows. No user reports came in this month.
 
 - Picture links get names. Wikipedia file links have an empty or missing `alt`, so they were nameless (`unnamed`: 11 times on ru/en Wikipedia and Habr, up to 21 links on one page). An empty `alt` no longer stops the search for a name (a logo's named wordmark after an empty icon is found), an svg icon is named by its `<title>`, and a picture link with nothing else is named from its address: `image Old town square`. Hashes and ids are not used as names.
 - Gismeteo (`weak_map` twice): the map held twice the page text, but the check counted only lines outside links, and on card-style pages most content is inside links. `weak_map` now counts link and button names too. The real weak spot was elsewhere: the current weather came as a column of one-word lines (`+9`, `Ветер`, `5`, `м/с`). Consecutive short fragments are now glued into one line, and the glued line is checked for prompt injection again, so a phrase split across fragments is still caught.
 - `zorko consent` with no answer no longer crashes. On Windows `< nul` counts as a terminal, so the question was asked and the empty input ended in a traceback; now nothing changes and Zorko says how to choose later. The question is printed by Zorko itself, so the Russian part is no longer garbled on the Windows console.
+
+## 0.1.1 (2026-10-29)
+
+From the first test run on real sites (Wikipedia, Habr, GitHub, Python docs, Gismeteo, Avito, Ozon):
+
+- Links inside sentences stay in the text as `[text](#id)` instead of breaking paragraphs into separate lines. On Wikipedia this was most of the map.
+- `read()` keeps the words of links, so sentences are whole, and long paragraphs are no longer cut.
+- Long menus (for example navigation tables with 60+ links) show 12 links and a note; `find()` still searches all of them.
+- A heading that is a link (news and blog lists) is one line, and an image whose caption repeats the heading is dropped.
+- Bot-check and rate-limit pages are recognized and reported as such instead of being shown as content. Zorko still does not bypass them.
 
 ## 0.1.0 (2026-10-29)
 
